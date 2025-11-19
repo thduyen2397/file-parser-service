@@ -1,11 +1,11 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 import pdfplumber
-import mammoth
 import docx
 import tempfile
 import os
 import re
+import subprocess
 
 app = FastAPI(title="File Parser Microservice")
 
@@ -65,21 +65,31 @@ def parse_docx(file_path):
     return "\n".join(text_parts)
 
 def parse_doc(file_path):
-    with open(file_path, "rb") as f:
-        result = mammoth.convert_to_html(f)
-
-    html = result.value
-
-    # Extract links and include them in text
-    links = re.findall(r'<a[^>]*href="([^"]*)"[^>]*>([^<]*)</a>', html)
-    text = re.sub(r"<[^>]+>", "", html)
-    
-    # Append hyperlinks to the text
-    for link_url, link_text in links:
-        if link_url.startswith('http') or link_url.startswith('mailto:'):
-            text += f" [{link_url}]"
-
-    return text
+    try:
+        import textract
+        # Extract text from .doc file using textract
+        text = textract.process(file_path).decode('utf-8')
+        
+        # Note: .doc files (binary format) don't preserve hyperlink information easily
+        # Textract extracts plain text only, hyperlinks are typically lost in .doc format
+        # If hyperlink extraction is critical for .doc files, consider converting to .docx first
+        
+        return text
+    except ImportError:
+        # Fallback: try using antiword via subprocess if textract is not available
+        try:
+            result = subprocess.run(
+                ['antiword', file_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                return result.stdout
+            else:
+                raise Exception("Failed to extract text from .doc file")
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+            raise Exception(f"Could not parse .doc file. Please ensure textract or antiword is installed. Error: {str(e)}")
 
 @app.post("/parse-file")
 async def parse_file(file: UploadFile = File(...)):

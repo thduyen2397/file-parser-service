@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install OS dependencies for pdfplumber
+# Install OS dependencies for pdfplumber and textract (.doc files)
 RUN apt-get update && apt-get install -y \
     poppler-utils \
     libxml2 \
     libxslt1.1 \
+    antiword \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
