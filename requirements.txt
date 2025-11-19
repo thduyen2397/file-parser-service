@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+python-docx
+pdfplumber
+mammoth
+python-multipart

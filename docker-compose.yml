@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  file-parser-service:
+    build: .
+    container_name: file-parser
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
